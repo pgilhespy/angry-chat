@@ -2,12 +2,11 @@ import React, { useState, useEffect } from "react";
 import './Help.css';
 
 const Help = () => {
-    // State to store the random number
+    // State to store the waitlist number
     const [waitlistNumber, setWaitlistNumber] = useState(null);
 
     const getRandomNumber = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
-    // Generate a random number when the component mounts
     useEffect(() => {
         setWaitlistNumber(getRandomNumber(15, 40));
 
@@ -23,7 +22,6 @@ const Help = () => {
         const initialDelay = getRandomNumber(1000, 5000);
         const timeoutId = setTimeout(decrementWaitlist, initialDelay);
 
-        // Cleanup timeout on unmount
         return () => clearTimeout(timeoutId);
     }, []);
 

@@ -2,10 +2,10 @@
 
 .loading-container {
   display: flex;
-  flex-direction: column; /* Stack items vertically */
-  align-items: center; /* Center items horizontally */
-  justify-content: center; /* Center items vertically */
-  min-height: 100vh; /* Ensure container takes full height of the viewport */
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
   background-color: #282c34;
 }
 
@@ -24,8 +24,8 @@
 }
 
 .loading-message {
-  margin-bottom: 20px; /* Adds space between the message and the spinner */
+  margin-bottom: 20px;
   font-size: 18px;
-  color: #d9d9d9; /* Light gray text color */
+  color: #d9d9d9;
   font-family: 'Roboto', sans-serif;
 }
