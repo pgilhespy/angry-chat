@@ -48,7 +48,7 @@ const App = ({ userData }) => {
         <div className="bottom-section">
           <div className="input-container">
             <input/>
-            <div id="submit">➢</div>
+            <div id="submit" className="arrowUp"></div>
           </div>
           <p className="info">
           A chatbot with an attitude—Angry Bot starts annoyed and only gets worse.
