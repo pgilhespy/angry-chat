@@ -106,7 +106,8 @@ input:focus{
 }
 
 .feed{
-  overflow: scroll;
+  overflow-y: scroll;
+  overflow-x: hidden;
   width: 100%;
   padding: 0;
 }
@@ -114,9 +115,9 @@ input:focus{
 .feed li{
   display: flex;
   background-color: #444654;
-  width: 100%;
   padding: 20px;
   margin: 20px 0;
+  width: fit-content;
 }
 
 .feed p{
@@ -126,5 +127,19 @@ input:focus{
 }
 
 .feed p.role{
-  min-width: 100px;
+  margin-right: 10px;
+  font-weight: bold;
+}
+
+.feed li.user {
+  background-color: #4A90E2; 
+  align-self: flex-end;
+  text-align: right;
+  border-radius: 12px 12px 12px 12px;
+}
+
+.feed li.assistant {
+  background-color: #444654; 
+  text-align: left;
+  border-radius: 12px 12px 12px 12px;
 }

@@ -41,7 +41,6 @@ const App = () => {
       console.error(error)
     }
   }
-  console.log(message)
 
   useEffect(() => {
     console.log(currentTitle, value, message)
@@ -72,6 +71,8 @@ const App = () => {
   const uniqueTitles = Array.from(new Set(previousChats.map(previousChat => previousChat.title)))
   console.log(uniqueTitles)
 
+  console.log(value)
+
   return (
     <div className="app">
       <section className="side-bar">
@@ -86,8 +87,8 @@ const App = () => {
       <section className="main">
         {!currentTitle && <h1>Angry Bot</h1>}
         <ul className="feed">
-          {currentChat?.map((chatMessage, index) => <li key={index}>
-            <p className='role'>{chatMessage.role}</p>
+          {currentChat?.map((chatMessage, index) => <li key={index} className={`message ${chatMessage.role}`}>
+            <p className='role'>{chatMessage.role}:</p>
             <p>{chatMessage.content}</p>
           </li>)}
         </ul>

@@ -31,3 +31,22 @@ app.post('/completions', async(req, res) => {
 })
 
 app.listen(PORT,  () => console.log('Your server is running on PORT ' + PORT))
+
+/*app.post('/completions', async (req, res) => {
+    const userMessage = req.body.message; // Get user input from request
+    
+    // Dummy AI response
+    const mockResponse = {
+        choices: [
+            {
+                message: {
+                    role: "assistant",
+                    content: `I'm Angry Bot! You said: "${userMessage}", and I don't care.`
+                }
+            }
+        ]
+    };
+
+    res.send(mockResponse); // Send mock response instead of making an API call
+});
+app.listen(PORT,  () => console.log('Your server is running on PORT ' + PORT))*/
