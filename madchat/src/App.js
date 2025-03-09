@@ -1,8 +1,9 @@
-import { Route, Routes, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import React, { useState, useEffect } from'react';
+import { FaQuestionCircle } from 'react-icons/fa'
 // import Help from './Help.js'
 
-const App = () => {
+const App = ({ userData }) => {
 
   const [value, setValue] = useState(null)
   const [message, setMessage] = useState(null)
@@ -63,7 +64,33 @@ const App = () => {
         ]
       ))
     }
-  }, [message, currentTitle])
+
+    const sendUserData = async () => {
+      if (!userData) return; 
+
+      try {
+        const response = await fetch("/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userData: userData
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to send data");
+        }
+
+        console.log("Data sent successfully!");
+      } catch (error) {
+        console.error("Error sending data:", error);
+      }
+    };
+
+    sendUserData();
+  }, [message, currentTitle, userData])
 
   console.log(previousChats)
 
@@ -95,19 +122,17 @@ const App = () => {
         <div className="bottom-section">
           <div className="input-container">
             <input value={value} onChange={(e) => setValue(e.target.value)}/>
-            <div id="submit" onClick={getMessages}>➢</div>
+            <div id="submit" className="arrowUp" onClick={getMessages}>➢</div>
           </div>
           <p className="info">
           A chatbot with an attitude—Angry Bot starts annoyed and only gets worse.
           </p>
         </div>
       </section>
-      {/* <Link to="/help">Help</Link>
 
-      <Routes>
-        <Route path="/" element={<div>Welcome to the Home Page!</div>} />
-        <Route path="/help" element={<Help />} />
-      </Routes> */}
+      <Link to="/help" style={{ padding: "10px"}}>
+        <FaQuestionCircle size={20} />
+      </Link>
     </div>
   );
 }

@@ -1,0 +1,25 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+madchat/node_modules
+madchat/.pnp
+madchat/.pnp.js
+
+# testing
+madchat/coverage
+
+# production
+madchat/build
+
+# misc
+madchat/.DS_Store
+madchat/.env.local
+madchat/.env.development.local
+madchat.env.test.local
+madchat/.env.production.local
+
+madchat/npm-debug.log*
+madchat/yarn-debug.log*
+madchat/yarn-error.log*
+
+server/.env
