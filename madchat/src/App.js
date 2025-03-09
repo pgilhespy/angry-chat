@@ -87,7 +87,7 @@ const App = () => {
       <section className="main">
         {!currentTitle && <h1>Angry Bot</h1>}
         <ul className="feed">
-          {currentChat?.map((chatMessage, index) => <li key={index} className={`message ${chatMessage.role}`}>
+          {currentChat?.map((chatMessage, index) => <li key={index} className={`${chatMessage.role}`}>
             <p className='role'>{chatMessage.role}:</p>
             <p>{chatMessage.content}</p>
           </li>)}
