@@ -38,18 +38,27 @@ class ChatClient:
              top_p: float = None,
              max_new_tokens: int = None) -> Dict:
         """
-        Example for frontend
+        Example for javascript frontend, calling the chat endpoint
+
+        const response = await fetch('/chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                message: message,
+                conversation_id: conversationId,
+                system_prompt: systemPrompt,
+                anger_level: angerLevel,
+                personality_mode: personalityMode,
+                glitch_level: glitchLevel,
+                use_prompt_utils: usePromptUtils,
+                temperature: temperature,
+                top_p: topP,
+                max_new_tokens: maxNewTokens,
+            }),
+        });
         
-        response = await client.chat(
-            message="Hello, how are you?",
-            system_prompt="You are a helpful AI assistant",
-            anger_level=50,
-            personality_mode="normal",
-            glitch_level=0.1,
-            temperature=0.7,
-            top_p=0.9,
-            max_new_tokens=400
-        )
         
         console.log(response.response)
         """

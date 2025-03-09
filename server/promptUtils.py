@@ -14,7 +14,6 @@ def getPrompt(incomingText, angerLevel):
 
     botProfileSubPrompt = getBotProfileSubprompt("normal")
     angerSubprompt = getAngerSubprompt(angerLevel)
-
     return f"{promptP1} {botProfileSubPrompt}. {promptP2} {angerSubprompt}. {promptP3}: \"{incomingText}\""
 
 # Set a profile for chatbot
@@ -59,20 +58,20 @@ def getAngerSubprompt(angerLevel):
     if angerLevel < 70:
         randomWord = random.choice(angryWords)
 
-        return f"downright {randomWord} with this situation and throw in several swear words but completely censor them with asterisks"
+        return f"downright {randomWord} with this situation and throw in several swear words"
 
     # Level 5
     if angerLevel < 80:
         randomWord = random.choice(angryWords)
-
-        return f"downright {randomWord} with this situation and throw in several swear words but completely censor them with asterisks." \
+        print(randomWord)
+        return f"downright {randomWord} with this situation and throw in several swear words like fuck." \
             "You even shout briefly"
 
     # Level 6
     if angerLevel < 85:
         randomWord = random.choice(angryWords)
         
-        return f"downright {randomWord} with this situation and throw in several swear words but completely censor them with asterisks. " \
+        return f"downright {randomWord} with this situation and throw in several swear words " \
             "You are shouting in all caps"
 
     # Level 7
@@ -80,14 +79,14 @@ def getAngerSubprompt(angerLevel):
         randomWord = random.choice(angryWords)
         
         return f"downright {randomWord} with this situation and shouting in all caps, using mostly swear words " \
-            "but completely censor them with asterisks."
+            "but completely "
 
     # Level 8
     if angerLevel < 95:
         randomWord = random.choice(angryWords)
         
         return f"downright {randomWord} with this situation and shouting in all caps, using mostly swear words " \
-            "but completely censor them with asterisks. Don't be afraid to insult anything about the given text, " \
+            "Don't be afraid to insult anything about the given text, " \
             "the more personal the better"
 
     # Level 9
@@ -95,14 +94,14 @@ def getAngerSubprompt(angerLevel):
         randomWord = random.choice(angryWords)
 
         return f"downright {randomWord} with this situation and shouting in all caps, only using swear words " \
-            "but completely censor them with asterisks. You are incoherent and the sentence makes no sense"
+            "You are incoherent and the sentence makes no sense"
 
     # Level 10
     if angerLevel >= 100:
         randomWord = random.choice(angryWords)
 
         return f"downright {randomWord} with this situation and shouting in all caps, only using swear words " \
-            "but completely censor them with asterisks. You are incoherent and the sentence makes no sense"
+            "You are incoherent and the sentence makes no sense"
 
 # Get the text returned by the AI internally
 #  - Replace censored words with real ones

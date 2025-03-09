@@ -1,15 +1,97 @@
 import os
 import uvicorn
-import torch
 import time
+import requests
+import json
 from pydantic import BaseModel, Field
 from typing import List, Dict, Optional, Any
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from transformers import AutoModelForCausalLM, AutoTokenizer
 from uuid import uuid4
 import promptUtils
+#import dotenv
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Claude API class to replace the local model
+class ClaudeAPI:
+    def __init__(self, api_key=None):
+        """Initialize Claude API client"""
+
+        self.api_key = os.getenv("ANTHROPIC_API_KEY")
+        if not self.api_key:
+            raise ValueError("Claude API key is required. Set ANTHROPIC_API_KEY environment variable or pass as parameter.")
+        
+        self.api_url = "https://api.anthropic.com/v1/messages"
+        self.model = "claude-3-haiku-20240307"  # Can be changed to any Claude model
+    
+    def generate_response(self, 
+                         messages: List[Dict[str, str]], 
+                         temperature=0.3, 
+                         top_p=None, 
+                         max_new_tokens=None):
+        """
+        Generate a response using Claude API
+        
+        Args:
+            messages: List of message dictionaries with role and content
+            temperature: Controls randomness (0.0-1.0)
+            top_p: Not used by Claude API, included for compatibility
+            max_new_tokens: Approximated to max_tokens for Claude
+        """
+        # Extract system prompt
+        system_prompt = ""
+        formatted_messages = []
+        
+        for message in messages:
+            if message["role"] == "system":
+                system_prompt = message["content"]
+            else:
+                formatted_messages.append({
+                    "role": message["role"],
+                    "content": message["content"]
+                })
+        
+        # Create the request payload
+        payload = {
+            "model": self.model,
+            "messages": formatted_messages,
+            "system": system_prompt,
+            "temperature": temperature,
+        }
+        
+        # Add max_tokens if specified (convert from max_new_tokens)
+        if max_new_tokens:
+            payload["max_tokens"] = max_new_tokens
+            
+        # Make the API request
+        headers = {
+            "x-api-key": self.api_key,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json"
+        }
+        
+        try:
+            response = requests.post(
+                self.api_url,
+                headers=headers,
+                json=payload
+            )
+            
+            if response.status_code == 200:
+                response_data = response.json()
+                return response_data["content"][0]["text"]
+            else:
+                error_msg = f"Claude API error: {response.status_code} - {response.text}"
+                print(error_msg)
+                return f"Error: {error_msg}"
+                
+        except Exception as e:
+            error_msg = f"Exception during Claude API call: {str(e)}"
+            print(error_msg)
+            return f"Error: {error_msg}"
 
 class ChatRequest(BaseModel):
     message_content: str
@@ -22,8 +104,8 @@ class ChatRequest(BaseModel):
     use_prompt_utils: Optional[bool] = False  # Whether to use promptUtils
     # Performance tuning parameters
     temperature: Optional[float] = 0.3  # Higher = more random/creative, Lower = more deterministic/focused
-    top_p: Optional[float] = 0.9  # Controls diversity via nucleus sampling (0.0-1.0)
-    max_new_tokens: Optional[int] = 400  # Maximum length of generated response
+    top_p: Optional[float] = 0.9  # Not used by Claude but kept for compatibility
+    max_new_tokens: Optional[int] = 400  # Approximated to max_tokens for Claude
 
 class ChatResponse(BaseModel):
     response: str
@@ -59,83 +141,12 @@ class ConversationManager:
         if conversation_id in self.conversations:
             self.conversations[conversation_id].append({"role": "assistant", "content": content})
 
-# SmolLM Model Class with performance optimizations
-class SmolLM:
-    def __init__(self):
-        # Use CUDA if available for 10-20x speedup
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        print(f"Using device: {self.device}")
-        
-        # Load tokenizer with local caching
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            "HuggingFaceTB/SmolLM2-1.7B-Instruct",
-            local_files_only=False  # Set to True if you've downloaded the model locally
-        )
-        
-        # Load model with optimizations:
-        # 1. torch_dtype=torch.float16 - Use half precision for 2x memory efficiency and faster inference
-        # 2. low_cpu_mem_usage=True - Reduces memory overhead during loading
-        self.model = AutoModelForCausalLM.from_pretrained(
-            "HuggingFaceTB/SmolLM2-1.7B-Instruct",
-            torch_dtype=torch.float16,  # Use float16 for faster inference
-            low_cpu_mem_usage=True
-        ).to(self.device)
-        
-        # Additional optimization: enable CUDA graph capture for repeated forward passes with same shape
-        self.model = self.model.eval()  # Ensure model is in eval mode
-    
-    def generate_response(self, 
-                         messages: List[Dict[str, str]], 
-                         temperature=0.3, 
-                         top_p=0.9, 
-                         max_new_tokens=400):
-        """
-        Generate a response with optimized parameters.
-        
-        Args:
-            messages: List of message dictionaries with role and content
-            temperature: Controls randomness (0.0-1.0)
-                - Lower (0.1-0.3): More focused, deterministic, and faster responses
-                - Higher (0.7-0.9): More creative but potentially slower to terminate
-            
-            top_p: Nucleus sampling parameter (0.0-1.0)
-                - Lower values (0.5-0.7): Consider fewer tokens, faster but less diverse
-                - Higher values (0.9-1.0): Consider more tokens, slower but more varied
-            
-            max_new_tokens: Maximum response length
-                - Lower values generate faster responses
-                - For chat, 200-400 tokens is usually sufficient
-        """
-        # Prepare input text using the tokenizer's chat template (optimized for this model)
-        input_text = self.tokenizer.apply_chat_template(messages, tokenize=False)
-        
-        # Encode efficiently with proper tensor type and device placement
-        inputs = self.tokenizer.encode(input_text, return_tensors='pt').to(self.device)
-        
-        # Generate with performance optimizations
-        with torch.no_grad():  # Disable gradient calculation for inference
-            outputs = self.model.generate(
-                inputs, 
-                max_new_tokens=max_new_tokens,  # Control response length
-                temperature=temperature,  # Control randomness
-                top_p=top_p,  # Nucleus sampling for efficient token selection
-                do_sample=True,  # Enable sampling for better quality
-                # Performance optimizations:
-                num_beams=1,  # Disable beam search for speed
-                early_stopping=True,  # Stop when ending seems likely
-                pad_token_id=self.tokenizer.eos_token_id  # Proper padding for efficiency
-            )
-            
-        # Extract only the new tokens (skip input tokens) for efficiency
-        input_size = inputs.shape[1]
-        outputs_decoded = self.tokenizer.decode(outputs[0][input_size:], skip_special_tokens=True)
-        
-        return outputs_decoded
-
 # Initialize FastAPI app and components
 app = FastAPI(title="Chat API")
 conversation_manager = ConversationManager()
-smol_lm = SmolLM()
+
+# Initialize Claude API client
+claude_api = ClaudeAPI()  # Will use ANTHROPIC_API_KEY from environment variables
 
 # Add CORS middleware for frontend compatibility
 app.add_middleware(
@@ -180,14 +191,14 @@ async def chat_view(request: ChatRequest):
         
         # Set generation parameters from request or use defaults
         temperature = request.temperature or 0.3
-        top_p = request.top_p or 0.9
+        top_p = request.top_p or 0.9  # Not used by Claude but kept for compatibility
         max_new_tokens = request.max_new_tokens or 400
         
-        # Get response with the optimized parameters
-        response_from_llm = smol_lm.generate_response(
+        # Get response from Claude API
+        response_from_llm = claude_api.generate_response(
             messages,
             temperature=temperature,
-            top_p=top_p,
+            top_p=top_p,  # This will be ignored by the Claude API
             max_new_tokens=max_new_tokens
         )
         
@@ -195,7 +206,7 @@ async def chat_view(request: ChatRequest):
         if request.use_prompt_utils:
             response_from_llm = promptUtils.process_response(
                 response_from_llm,
-                glitch_level=request.glitch_level
+                glitch_level=request.glitch_level,
             )
         
         # Store the assistant's response in the conversation history
