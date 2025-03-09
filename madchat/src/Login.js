@@ -12,12 +12,13 @@ const Login = ({ setUserData }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     setUserData({ name, gender, age });
-    navigate("/");
+    navigate("/home");
   };
 
   return (
     <div className="login-container">
-      <h2>Enter Your Information</h2>
+      <h2>Angry Chat</h2>
+      <h1>Enter Your Information</h1>
       <form onSubmit={handleSubmit}>
         <input className="login-input" type="text" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} required />
         <input className="login-input" type="text" placeholder="Gender" value={gender} onChange={(e) => setGender(e.target.value)} required />

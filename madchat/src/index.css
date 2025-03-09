@@ -16,6 +16,12 @@ h1 {
   line-height: 2.25rem;
 }
 
+h2 {
+  font-size: 3.25rem;
+  font-weight: 600;
+  line-height: 2.25rem;
+}
+
 .app{
   background-color: #ffffff;
   display: flex;
