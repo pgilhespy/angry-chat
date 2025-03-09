@@ -138,3 +138,44 @@ input:focus{
 .arrowUp:hover {
   background-size: 70%;
 }
+
+.feed{
+  overflow-y: scroll;
+  overflow-x: hidden;
+  width: 100%;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.feed li{
+  display: flex;
+  background-color: #444654;
+  padding: 20px;
+  margin: 20px 0;
+  width: fit-content;
+}
+
+.feed p{
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 14px;
+  text-align: left;
+}
+
+.feed p.role{
+  margin-right: 10px;
+  font-weight: bold;
+}
+
+.feed li.user {
+  background-color: #4A90E2; 
+  align-self: flex-end;
+  text-align: right;
+  border-radius: 12px 12px 12px 12px;
+}
+
+.feed li.assistant {
+  background-color: #444654; 
+  text-align: left;
+  border-radius: 12px 12px 12px 12px;
+}
