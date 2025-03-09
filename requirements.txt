@@ -1,0 +1,19 @@
+# API and server
+fastapi==0.115.8
+uvicorn==0.34.0
+python-multipart==0.0.20
+pydantic==2.10.6
+
+# AI and ML
+torch==2.6.0
+transformers==4.48.2
+accelerate>=0.20.0
+sentencepiece>=0.2.0
+
+# Utilities
+requests==2.32.3
+openai==1.61.0
+
+# Optional performance improvements
+numpy==1.26.4
+tokenizers==0.21.0
