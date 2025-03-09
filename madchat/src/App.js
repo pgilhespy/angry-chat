@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { FaQuestionCircle } from 'react-icons/fa'
 
 const App = () => {
   return (
@@ -25,7 +26,10 @@ const App = () => {
           </p>
         </div>
       </section>
-      <Link to="/help">Help</Link>
+
+      <Link to="/help" style={{ padding: "10px"}}>
+        <FaQuestionCircle size={20} />
+      </Link>
     </div>
   );
 }
