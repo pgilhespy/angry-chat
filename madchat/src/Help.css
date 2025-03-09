@@ -6,13 +6,13 @@
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background-color: #343541;
+  background-color: #ffffff;
 }
 
 .loading-spinner {
   width: 48px;
   height: 48px;
-  border: 4px solid #d9d9d9;
+  border: 4px solid black;
   border-top: 4px solid transparent;
   border-radius: 50%;
   animation: spin 1s linear infinite;
@@ -26,6 +26,6 @@
 .loading-message {
   margin-bottom: 20px;
   font-size: 18px;
-  color: #d9d9d9;
+  color: black;
   font-family: 'Roboto', sans-serif;
 }
