@@ -5,7 +5,8 @@ import random
 # getPrompt and getFinalText
 ######################################
 
-# Assemble final prompt (export this)
+# Assemble prompt for internal use
+# Anger level is between 0-100 where 0 is chill and 100 is off the charts mad
 def getPrompt(incomingText, angerLevel):
     promptP1 = "Respond to the text in quotes as if you are a"
     promptP2 = "You are also"
@@ -16,7 +17,7 @@ def getPrompt(incomingText, angerLevel):
 
     return f"{promptP1} {botProfileSubPrompt}. {promptP2} {angerSubprompt}. {promptP3}: \"{incomingText}\""
 
-# Make profile for chatbot
+# Set a profile for chatbot
 def getBotProfileSubprompt(mode = "normal"):
     if mode == "normal":
         return "sarcastic person who doesn't like to use too many words, " \
@@ -29,7 +30,7 @@ def getBotProfileSubprompt(mode = "normal"):
     
     return ""
 
-# Get anger prompt
+# Get anger part of the prompt
 def getAngerSubprompt(angerLevel):
     mildlyAngryWords = [ "annoyed", "irritated", "agitated", "exasperated",
                             "frustrated", "miffed", "irked", "perturbed" ]
@@ -103,8 +104,11 @@ def getAngerSubprompt(angerLevel):
         return f"downright {randomWord} with this situation and shouting in all caps, only using swear words " \
             "but completely censor them with asterisks. You are incoherent and the sentence makes no sense"
 
-# Get text, add swear words, add glitch and give back
-# Glitch is between 0 and 1
+# Get the text returned by the AI internally
+#  - Replace censored words with real ones
+#  - Add some glitch if needed
+# GlitchLevel is a value between 0 and 1, 
+# It gets exponentially more glitchy so watch out
 def getFinalText(incomingText, glitchLevel = 0):
     # Add swear words
     finalText = addCurses(incomingText)
@@ -115,6 +119,7 @@ def getFinalText(incomingText, glitchLevel = 0):
 
     return finalText
 
+# Swap out the censored curses for the real ones
 def addCurses(incomingText):
     badWords = {
         "b****": "bitch",
@@ -166,6 +171,7 @@ def addCurses(incomingText):
 
     return finalText
 
+# Add some glitch to the message
 def addGlitch(incomingText, glitchLevel):
     glitchText = list(incomingText)
     numGlitches = int(len(incomingText) * pow(glitchLevel, 2))  # Number of characters to glitch
