@@ -9,12 +9,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from uuid import uuid4
-import system_prompts
+import promptUtils
 
 class ChatRequest(BaseModel):
     message_content: str
     conversation_id: Optional[str] = None
-    prompt_id: Optional[int] = None
+    system_prompt: Optional[str] = None
+    # Personality tuning parameters
+    anger_level: Optional[int] = 0  # Level of anger (0-100)
+    personality_mode: Optional[str] = "normal"  # Personality mode ("normal" or "zesty")
+    glitch_level: Optional[float] = 0  # Text glitch level (0-1)
+    use_prompt_utils: Optional[bool] = False  # Whether to use promptUtils
     # Performance tuning parameters
     temperature: Optional[float] = 0.3  # Higher = more random/creative, Lower = more deterministic/focused
     top_p: Optional[float] = 0.9  # Controls diversity via nucleus sampling (0.0-1.0)
@@ -124,7 +129,6 @@ class SmolLM:
         # Extract only the new tokens (skip input tokens) for efficiency
         input_size = inputs.shape[1]
         outputs_decoded = self.tokenizer.decode(outputs[0][input_size:], skip_special_tokens=True)
-        outputs_decoded = outputs_decoded.replace("<|assistant|>", "").strip()
         
         return outputs_decoded
 
@@ -142,12 +146,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Get available system prompts endpoint
-@app.get("/system-prompts")
-async def get_system_prompts():
-    """Returns all available system prompts from the system_prompts module"""
-    return {"prompts": system_prompts.get_all_prompts()}
-
 # Main chat endpoint with performance optimizations
 @app.post("/chat", response_model=ChatResponse)
 async def chat_view(request: ChatRequest):
@@ -156,17 +154,19 @@ async def chat_view(request: ChatRequest):
         message_content = request.message_content
         conversation_id = request.conversation_id
         
-        if request.prompt_id:
-            try:
-                system_prompt = system_prompts.get_system_prompt(request.prompt_id)
-            except ValueError:
-                return JSONResponse({
-                    "error": f"Invalid prompt ID: {request.prompt_id}. Must be between 1 and 10.",
-                    "response": "An error occurred with the prompt selection.",
-                    "user_message": message_content
-                }, status_code=400)
+        # Use prompt utils if requested
+        if request.use_prompt_utils:
+            system_prompt = promptUtils.process_system_prompt(
+                message_content,
+                anger_level=request.anger_level,
+                mode=request.personality_mode
+            )
+        # Use provided system prompt
+        elif request.system_prompt:
+            system_prompt = request.system_prompt
+        # Fall back to default
         else:
-            system_prompt = system_prompts.get_default_system_prompt()
+            system_prompt = "You are a helpful assistant."
         
         # Process the message (no system prompt stored in history)
         result = conversation_manager.process_message(message_content, conversation_id)
@@ -190,6 +190,13 @@ async def chat_view(request: ChatRequest):
             top_p=top_p,
             max_new_tokens=max_new_tokens
         )
+        
+        # Apply text effects if using promptUtils
+        if request.use_prompt_utils:
+            response_from_llm = promptUtils.process_response(
+                response_from_llm,
+                glitch_level=request.glitch_level
+            )
         
         # Store the assistant's response in the conversation history
         conversation_manager.add_assistant_message(conversation_id, response_from_llm)

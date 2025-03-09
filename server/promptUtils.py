@@ -157,7 +157,8 @@ def addCurses(incomingText):
                 curses[key] = badWords[curses[key].lower()]
 
         # Word not found
-        print("Couldn't translate swear word")
+        else:
+            print(f"Couldn't translate swear word: {curses[key]}")
 
     # Actually replace them
     finalText = incomingText
@@ -178,17 +179,22 @@ def addGlitch(incomingText, glitchLevel):
     
     return ''.join(glitchText)
 
-####### TESTS ########
+# Added function to integrate with ChatClient/Server
+def process_system_prompt(message_content, anger_level=0, mode="normal", glitch_level=0):
+    """
+    Args:
+        message_content: The user message
+        anger_level: Level of anger (0-100)
+        mode: Personality mode ("normal" or "zesty")
+        glitch_level: Level of text glitching (0-1)
+    """
+    return getPrompt(message_content, anger_level)
 
-prompt = getPrompt("Hey how are you", 75)
-print("Prompt: \n" + prompt)
-
-samplePromptResult = "Oh, just f***ing peachy! Living the fing dream! EVERYTHING IS SO F***ING GREAT I COULD SCREAM! Thanks for the useless check-in. 🙄"
-finalTextNoGlitch = getFinalText(samplePromptResult, 0)
-print("finalTextNoGlitch: \n" + finalTextNoGlitch)
-
-finalTextSomeGlitch = getFinalText(samplePromptResult, 0.1)
-print("finalTextSomeGlitch: \n" + finalTextSomeGlitch)
-
-finalTextLotsGlitch = getFinalText(samplePromptResult, 0.4)
-print("finalTextLotsGlitch: \n" + finalTextLotsGlitch)
+# Added function to post-process LLM response
+def process_response(response_text, glitch_level=0):
+    """
+    Args:
+        response_text: The text from the LLM
+        glitch_level: Level of text glitching (0-1)
+    """
+    return getFinalText(response_text, glitch_level)

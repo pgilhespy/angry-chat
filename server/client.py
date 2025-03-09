@@ -1,6 +1,7 @@
 import requests
 import json
 from typing import Dict, Optional
+import promptUtils
 
 class ChatClient:
     """Client for interacting with the SmolLM chat API"""
@@ -26,7 +27,12 @@ class ChatClient:
     def chat(self, 
              message: str, 
              conversation_id: str = None, 
-             prompt_id: int = None,
+             system_prompt: str = None,
+             # Personality parameters
+             anger_level: int = 0,
+             personality_mode: str = "normal",
+             glitch_level: float = 0,
+             use_prompt_utils: bool = False,
              # Performance parameters
              temperature: float = None,
              top_p: float = None,
@@ -36,7 +42,10 @@ class ChatClient:
         
         response = await client.chat(
             message="Hello, how are you?",
-            prompt_id=2,
+            system_prompt="You are a helpful AI assistant",
+            anger_level=50,
+            personality_mode="normal",
+            glitch_level=0.1,
             temperature=0.7,
             top_p=0.9,
             max_new_tokens=400
@@ -48,7 +57,13 @@ class ChatClient:
         Args:
             message: The user message
             conversation_id: Optional conversation ID for continuing a conversation
-            prompt_id: Optional prompt ID (1-10) to select a predefined system prompt
+            system_prompt: Optional system prompt to define the AI's behavior
+            
+            # Personality parameters
+            anger_level: Level of anger from 0-100
+            personality_mode: Personality type ("normal" or "zesty")
+            glitch_level: Level of text glitching from 0-1
+            use_prompt_utils: Whether to use promptUtils for generating system prompt
             
             # Performance parameters
             temperature: Controls randomness (0.0-1.0)
@@ -64,6 +79,14 @@ class ChatClient:
                 - 100-200: Quick, shorter responses
                 - 400-800: More detailed responses but slower
         """
+        # Apply promptUtils if requested
+        if use_prompt_utils and not system_prompt:
+            system_prompt = promptUtils.process_system_prompt(
+                message, 
+                anger_level=anger_level,
+                mode=personality_mode
+            )
+        
         # Build payload with required fields
         payload = {
             "message_content": message,
@@ -72,8 +95,14 @@ class ChatClient:
         if conversation_id:
             payload["conversation_id"] = conversation_id
             
-        if prompt_id:
-            payload["prompt_id"] = prompt_id
+        if system_prompt:
+            payload["system_prompt"] = system_prompt
+            
+        # Add personality parameters
+        payload["anger_level"] = anger_level
+        payload["personality_mode"] = personality_mode
+        payload["glitch_level"] = glitch_level
+        payload["use_prompt_utils"] = use_prompt_utils
             
         # Add performance parameters if provided
         if temperature is not None:
@@ -94,7 +123,16 @@ class ChatClient:
             
             # Process response
             if response.status_code == 200:
-                return response.json()
+                response_data = response.json()
+                
+                # Post-process the response if using promptUtils
+                if use_prompt_utils and "response" in response_data:
+                    response_data["response"] = promptUtils.process_response(
+                        response_data["response"], 
+                        glitch_level=glitch_level
+                    )
+                
+                return response_data
             else:
                 error_msg = f"Request failed with status code {response.status_code}"
                 print(f"Error: {error_msg}")
