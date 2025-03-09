@@ -110,7 +110,19 @@ input:focus{
 
 #submit{
   position: absolute;
-  bottom: 15px;
+  bottom: 7.5px;
   right: 0;
   cursor: pointer;
+  border-radius: 17.5px;
+  background-color: black;
+}
+
+.arrowUp {
+  width: 35px;
+  height: 35px;
+  background-image: url('../images/arrowUp.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 60%;
 }
