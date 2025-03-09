@@ -48,7 +48,7 @@ def getPrompt(incomingText, angerLevel, mode="normal", glitchLevel=0, userData=N
         fullPrompt += f"{userData_context} "
     fullPrompt += f"{promptP3}: \"{incomingText}\""
     
-    print(fullPrompt)  # For debugging
+    #print(fullPrompt)  # For debugging
     return fullPrompt
 
 # Set a profile for chatbot

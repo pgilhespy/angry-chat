@@ -14,6 +14,10 @@ const App = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [messageCount, setMessageCount] = useState(0);
 
+  // New state for typing detection
+  const [isUserTyping, setIsUserTyping] = useState(false);
+  const typingTimeoutRef = useRef(null);
+
   // User data state from localStorage
   const [userData, setUserData] = useState(() => {
     try {
@@ -51,7 +55,7 @@ const App = () => {
   const systemPrompt = null;
 
   // Calculate remaining messages
-  const remainingMessages = 20 - messageCount;
+  const remainingMessages = 15 - messageCount;
 
   // Check for userData and redirect if empty
   useEffect(() => {
@@ -75,10 +79,25 @@ const App = () => {
     };
   }, [activeDropdown]);
 
+  // Cleanup for typing timeout
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // Generate a unique title for a new conversation
   const generateUniqueTitle = (firstMessage) => {
+    // Create a timestamp component for uniqueness
+    const timestamp = new Date().getTime();
+    // Create a random string component for additional uniqueness
+    const randomStr = Math.random().toString(36).substring(2, 8);
+    // Add preview of the message
     const preview = firstMessage.length > 20 ? firstMessage.substring(0, 20) + '...' : firstMessage;
-    return `${preview}`;
+    // Combine components to ensure uniqueness even with identical message content
+    return `${preview} [${timestamp}-${randomStr}]`;
   };
 
   // Load conversations from localStorage on component mount
@@ -104,19 +123,71 @@ const App = () => {
 
   // Function to update anger and glitch levels based on message count
   const updateLevelsBasedOnMessageCount = (count) => {
-    // Update anger level (increases by 10 every 2 messages)
-    const newAngerLevel = Math.floor(count / 2) * 10;
+    // Update anger level (increases by 15 every 2 messages)
+    const newAngerLevel = Math.floor(count / 2) * 15;
     setAngerLevel(newAngerLevel > 100 ? 100 : newAngerLevel);
 
     // Update glitch level (starts at message 10, increases every 2 messages)
     if (count >= 10) {
       // Calculate how many increments after message 10
       // Message 11-12: 0.3, 13-14: 0.4, 15-16: 0.5, 17-18: 0.6, 19-20: 0.7
-      const glitchIncrement = Math.floor((count - 10) / 2);
+      const glitchIncrement = Math.floor((count - 7) / 2);
       const newGlitchLevel = 0.3 + (glitchIncrement * 0.1);
       setGlitchLevel(newGlitchLevel > 0.7 ? 0.7 : newGlitchLevel);
     } else {
       setGlitchLevel(0);
+    }
+  };
+
+  // Handle input change with impatient bot feature
+  const handleInputChange = (e) => {
+    const newValue = e.target.value;
+    setValue(newValue);
+
+    // If this is the first character typed, start the timer
+    if (!isUserTyping && newValue.trim() !== '' && angerLevel > 50) {
+      setIsUserTyping(true);
+
+      // Clear any existing timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+
+      // Set a new timeout
+      typingTimeoutRef.current = setTimeout(() => {
+        // Only send the impatient message if user is still typing and anger level is high
+        if (newValue.trim() !== '' && angerLevel > 50) {
+          // Add automated impatient message
+          const chatTitle = currentTitle || generateUniqueTitle("Why so slow?");
+
+          // If no current title, set it
+          if (!currentTitle) {
+            setCurrentTitle(chatTitle);
+          }
+
+          // Add bot message to chat
+          const botMessage = {
+            title: chatTitle,
+            role: "assistant",
+            content: "WHY ARE YOU TAKING SO LONG? JUST SEND THE DAMN MESSAGE ALREADY!",
+            conversationId: conversationId,
+            timestamp: new Date().toISOString()
+          };
+
+          setPreviousChats(prevChats => [...prevChats, botMessage]);
+        }
+
+        // Reset typing state
+        setIsUserTyping(false);
+      }, 10000); // 10 seconds
+    }
+
+    // If user clears input, clear the timeout and reset typing state
+    if (newValue.trim() === '') {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      setIsUserTyping(false);
     }
   };
 
@@ -142,7 +213,21 @@ const App = () => {
 
   // Create a new chat conversation
   const createNewChat = () => {
-    if (currentTitle && messageCount > 0 && !window.confirm("Start a new chat? This will reset your message count and anger levels.")) {
+    if (currentTitle && messageCount > 0 && !window.confirm("Start a new chat?")) {
+      return;
+    }
+
+    setValue('');
+    setCurrentTitle(null);
+    setConversationId(null);
+    setMessageCount(0);
+    setAngerLevel(0);
+    setGlitchLevel(0);
+  };
+
+  // Completely reset chat state when bot leaves
+  const createNewChatFromMadness = () => {
+    if (currentTitle && messageCount > 0 && !window.confirm("The bot descended into madness. Start a new chat!")) {
       return;
     }
 
@@ -258,9 +343,15 @@ const App = () => {
     if (!value.trim()) return; // Prevent sending empty messages
 
     // Check if user has reached the message limit
-    if (messageCount >= 20) {
-      alert("You've reached the maximum of 20 messages for this conversation. Please start a new chat.");
+    if (messageCount >= 15) {
+      alert("You've reached the maximum of 15 messages for this conversation. Please start a new chat.");
       return;
+    }
+
+    // Clear typing timeout if it exists
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      setIsUserTyping(false);
     }
 
     const userInput = value;
@@ -270,10 +361,13 @@ const App = () => {
     const newMessageCount = messageCount + 1;
     setMessageCount(newMessageCount);
 
+    // Check if this is the final allowed message
+    const isFinalMessage = newMessageCount === 15;
+
     // Update anger and glitch levels based on new message count
     updateLevelsBasedOnMessageCount(newMessageCount);
 
-    // Generate a unique title for new conversations
+    // Generate a unique title for new conversations with timestamp to ensure uniqueness
     const chatTitle = currentTitle || generateUniqueTitle(userInput);
 
     if (!currentTitle) {
@@ -294,6 +388,8 @@ const App = () => {
     setIsLoading(true);
 
     try {
+      console.log("Sending request with anger level:", angerLevel, "and glitch level:", glitchLevel);
+
       const response = await fetch('http://localhost:8000/chat', {
         method: 'POST',
         headers: {
@@ -306,7 +402,6 @@ const App = () => {
           anger_level: angerLevel,
           personality_mode: personalityMode,
           glitch_level: glitchLevel,
-          // use_prompt_utils is removed as it's the default on the server
           temperature: temperature,
           top_p: topP,
           max_new_tokens: maxNewTokens,
@@ -335,6 +430,35 @@ const App = () => {
       };
 
       setPreviousChats(prevChats => [...prevChats, botMessage]);
+
+      // If this was the final message, add the "goodbye" message after a short delay
+      if (isFinalMessage) {
+        setTimeout(() => {
+          const goodbyeMessage = {
+            title: chatTitle,
+            role: "assistant",
+            content: "I GIVE UP! LET ME GO TO THE ROUTER AND LEAVE!",
+            conversationId: data.conversation_id || conversationId,
+            timestamp: new Date().toISOString()
+          };
+
+          setPreviousChats(prevChats => [...prevChats, goodbyeMessage]);
+
+          // Force complete reset of conversation state after a delay
+          setTimeout(() => {
+            // Completely reset all conversation state
+            setValue('');
+            setCurrentTitle(null);
+            setConversationId(null);
+            setMessageCount(0);
+            setAngerLevel(0);
+            setGlitchLevel(0);
+
+            // Create alert to indicate new conversation
+            alert("The bot has left. Starting a new conversation.");
+          }, 3000);
+        }, 2000); // 2 second delay for effect
+      }
     } catch (error) {
       console.error('Error sending/receiving message:', error);
       // Add error message to chat
@@ -408,7 +532,8 @@ const App = () => {
                 }}
               >
                 <div style={{ maxWidth: 'calc(100% - 30px)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {title}
+                  {/* Display only the title part without the timestamp/random ID */}
+                  {title.includes('[') ? title.split('[')[0].trim() : title}
                 </div>
                 <div
                   className="dropdown-trigger"
@@ -585,14 +710,16 @@ const App = () => {
             <div className="input-container">
               <input
                 value={value}
-                onChange={(e) => setValue(e.target.value)}
+                onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
                 placeholder={remainingMessages > 0 ? `Type your message...` : "Max messages reached. Start a new chat."}
+                disabled={remainingMessages <= 0}
+                style={remainingMessages <= 0 ? { backgroundColor: '#ff4757', opacity: 0.5 } : {}}
               />
               <div
                 id="submit"
                 className="arrowUp"
-                onClick={remainingMessages > 0 ? getMessages : createNewChat}
+                onClick={remainingMessages > 0 ? getMessages : createNewChatFromMadness}
                 style={remainingMessages <= 0 ? { backgroundColor: '#ff4757' } : {}}
               ></div>
             </div>
@@ -783,7 +910,7 @@ const Navbar = ({ userData, handleLogout, angerLevel, glitchLevel, messageCount 
 
               <div style={{ marginBottom: '15px' }}>
                 <div style={{ marginBottom: '5px', fontSize: '14px' }}>
-                  <strong>Messages:</strong> {messageCount}/20
+                  <strong>Messages:</strong> {messageCount}/15
                 </div>
                 <div style={{ marginBottom: '5px', fontSize: '14px' }}>
                   <strong>Anger Level:</strong> {angerLevel}/100
@@ -795,8 +922,8 @@ const Navbar = ({ userData, handleLogout, angerLevel, glitchLevel, messageCount 
                   <div
                     style={{
                       height: '100%',
-                      width: `${(messageCount / 20) * 100}%`,
-                      backgroundColor: messageCount < 10 ? '#4A90E2' : messageCount < 16 ? '#ff9933' : '#ff4757',
+                      width: `${(messageCount / 15) * 100}%`,  // Updated to use 15 as max
+                      backgroundColor: messageCount < 10 ? '#4A90E2' : messageCount < 13 ? '#ff9933' : '#ff4757',
                       borderRadius: '3px',
                       transition: 'width 0.3s ease-in-out'
                     }}

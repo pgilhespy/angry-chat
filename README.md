@@ -2,6 +2,8 @@
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
+To run the server, execute the file in the folder server: `python fast-api.py` in another tab in the terminal and access `localhost:8000` in your browser.
+
 ## Available Scripts
 
 In the project directory, you can run:

@@ -104,13 +104,13 @@ class ChatClient:
                 response_data = response.json()
                 
                 # Note: No need to post-process response here since the server does it
-                print("response_data", response_data)
-                print("payload", payload)
+                #print("response_data", response_data)
+                #print("payload", payload)
                 return response_data
             else:
                 error_msg = f"Request failed with status code {response.status_code}"
                 print(f"Error: {error_msg}")
-                print(response.text)
+                #print(response.text)
                 return {"error": error_msg}
                 
         except Exception as e:

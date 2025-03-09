@@ -197,11 +197,7 @@ async def chat_view(request: ChatRequest):
         message_content = request.message_content
         conversation_id = request.conversation_id
         user_data = request.userData
-        
-        # Log and process user data if present
-        if user_data:
-            print(f"Received user data: {user_data}")
-            
+                    
         # Handle case where only userData is provided (no message)
         if user_data and not message_content:
             return JSONResponse({
