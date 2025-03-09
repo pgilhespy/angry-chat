@@ -183,14 +183,10 @@ const App = () => {
 
   // Generate a unique title for a new conversation
   const generateUniqueTitle = (firstMessage) => {
-    // Create a timestamp component for uniqueness
-    const timestamp = new Date().getTime();
-    // Create a random string component for additional uniqueness
-    const randomStr = Math.random().toString(36).substring(2, 8);
     // Add preview of the message
     const preview = firstMessage.length > 20 ? firstMessage.substring(0, 20) + '...' : firstMessage;
     // Combine components to ensure uniqueness even with identical message content
-    return `${preview} [${timestamp}-${randomStr}]`;
+    return `${preview}`;
   };
 
   // Load conversations from localStorage on component mount
@@ -320,19 +316,16 @@ const App = () => {
 
   // Completely reset chat state when bot leaves
   const createNewChatFromMadness = () => {
-    // Always clear state completely before creating a new chat
+    if (currentTitle && messageCount > 0 && !window.confirm("The bot descended into madness. Start a new chat?")) {
+      return;
+    }
+
     setValue('');
     setCurrentTitle(null);
     setConversationId(null);
     setMessageCount(0);
     setAngerLevel(0);
     setGlitchLevel(0);
-
-    // Wait a short moment to ensure state is updated before allowing new input
-    setTimeout(() => {
-      // Optional: Show a notification that a new chat has been created
-      console.log("New chat created after bot meltdown");
-    }, 100);
   };
 
   // Handle clicking on an existing conversation
