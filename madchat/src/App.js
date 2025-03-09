@@ -1,7 +1,36 @@
+import React, { useEffect } from "react";
 import { Link } from 'react-router-dom';
 import { FaQuestionCircle } from 'react-icons/fa'
 
-const App = () => {
+const App = ({ userData }) => {
+  useEffect(() => {
+    const sendUserData = async () => {
+      if (!userData) return; 
+
+      try {
+        const response = await fetch("/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userData: userData
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to send data");
+        }
+
+        console.log("Data sent successfully!");
+      } catch (error) {
+        console.error("Error sending data:", error);
+      }
+    };
+
+    sendUserData();
+  }, [userData]);
+
   return (
     <div className="app">
       <section className="side-bar">
