@@ -1,5 +1,4 @@
-import { Route, Routes, Link } from 'react-router-dom';
-// import Help from './Help.js'
+import { Link } from 'react-router-dom';
 
 const App = () => {
   return (
@@ -26,12 +25,7 @@ const App = () => {
           </p>
         </div>
       </section>
-      {/* <Link to="/help">Help</Link>
-
-      <Routes>
-        <Route path="/" element={<div>Welcome to the Home Page!</div>} />
-        <Route path="/help" element={<Help />} />
-      </Routes> */}
+      <Link to="/help">Help</Link>
     </div>
   );
 }
