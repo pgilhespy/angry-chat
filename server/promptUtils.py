@@ -2,44 +2,89 @@ import random
 
 ############### USAGE ################
 # Only functions you need to use are
-# getPrompt and getFinalText
+# process_system_prompt and process_response
 ######################################
 
 # Assemble prompt for internal use
 # Anger level is between 0-100 where 0 is chill and 100 is off the charts mad
-def getPrompt(incomingText, angerLevel):
+def getPrompt(incomingText, angerLevel, mode="normal", glitchLevel=0, userData=None):
     promptP1 = "Respond to the text in quotes as if you are a"
     promptP2 = "You are also"
     promptP3 = "Here is the text to respond to"
+    
+    # Add user data context if available
+    userData_context = ""
+    if userData and isinstance(userData, dict):
+        # Extract common user data fields
+        name = userData.get('name', '')
+        age = userData.get('age', '')
+        gender = userData.get('gender', '')
+        
+        if any([name, age, gender]):
+            userData_context = f"The user's name is {name}. " if name else ""
+            userData_context += f"The user is {age} years old. " if age else ""
+            userData_context += f"The user's gender is {gender}. " if gender else ""
+            
+            # Add instruction on how to use this data
+            userData_context += "Use this information naturally in your responses, "
+            
+            # Add specific instructions based on anger level
+            if angerLevel >= 60:
+                userData_context += "especially when insulting them or expressing extreme frustration. "
+                userData_context += "Make insults personal using their name or other details. "
+            elif angerLevel >= 30:
+                userData_context += "occasionally referring to them by name when annoyed. "
+            else:
+                userData_context += "occasionally referring to them by name in a friendly way. "
+                
+            userData_context += "Don't explicitly mention that you know this information. "
 
-    botProfileSubPrompt = getBotProfileSubprompt("normal")
+    botProfileSubPrompt = getBotProfileSubprompt(mode)
     angerSubprompt = getAngerSubprompt(angerLevel)
-    return f"{promptP1} {botProfileSubPrompt}. {promptP2} {angerSubprompt}. {promptP3}: \"{incomingText}\""
+    
+    # Construct the full prompt with user data context
+    fullPrompt = f"{promptP1} {botProfileSubPrompt}. {promptP2} {angerSubprompt}. "
+    if userData_context:
+        fullPrompt += f"{userData_context} "
+    fullPrompt += f"{promptP3}: \"{incomingText}\""
+    
+    print(fullPrompt)  # For debugging
+    return fullPrompt
 
 # Set a profile for chatbot
-def getBotProfileSubprompt(mode = "normal"):
-    if mode == "normal":
-        return "sarcastic person who doesn't like to use too many words, " \
-            "you keep things brief and snappy. " \
-            "You don't use any formal language or polite mannerisms"
+def getBotProfileSubprompt(mode="normal"):
+    # Common brevity instruction to add to all profiles
+    brevity_instruction = "Keep your responses very brief - use 1-2 sentences maximum. " \
+        "Be direct and to the point. No explanations, just answers. " \
+        "Never use asterisks to narrate actions and don't describe your tone. " \
+        "Use as few words as possible while still answering the question."
     
-    if mode == "zesty":
-        return "flamboyantly gay man from Vancouver BC who enjoys drag " \
-            "you keep things brief and snappy"
-    
-    return ""
+    if mode == "sarcastic":
+        return "sarcastic person who doesn't like to use too many words. " \
+            "You keep things extremely brief and snappy. " \
+            "You don't use any formal language or polite mannerisms. " + brevity_instruction
+    elif mode == "normal":
+        return "direct and clear communicator. " \
+            "You're helpful but extremely concise. " + brevity_instruction
+    elif mode == "zesty":
+        return "flamboyantly gay man from Vancouver BC who enjoys drag. " \
+            "You keep things extremely brief. " + brevity_instruction
+    else:
+        # Default to normal mode if an unknown mode is provided
+        return "direct and clear communicator. " \
+            "You're helpful but extremely concise. " + brevity_instruction
 
-# Get anger part of the prompt
+# Get anger part of the prompt - MODIFIED FOR UNCENSORED SWEARING
 def getAngerSubprompt(angerLevel):
-    mildlyAngryWords = [ "annoyed", "irritated", "agitated", "exasperated",
-                            "frustrated", "miffed", "irked", "perturbed" ]
-    angryWords = [ "enraged", "livid", "wrathful", "infuriated", "irate", "incensed",
-                  "fuming", "outraged" ]
+    mildlyAngryWords = ["annoyed", "irritated", "agitated", "exasperated",
+                        "frustrated", "miffed", "irked", "perturbed"]
+    angryWords = ["enraged", "livid", "wrathful", "infuriated", "irate", "incensed",
+                 "fuming", "outraged"]
     
     # Level 1
     if angerLevel < 20:
         randomWord = random.choice(mildlyAngryWords)
-        
+
         return f"a little bit {randomWord}"
 
     # Level 2
@@ -52,122 +97,69 @@ def getAngerSubprompt(angerLevel):
     if angerLevel < 60:
         randomWord = random.choice(mildlyAngryWords)
 
-        return f"very {randomWord}. You even throw in a swear word but completely censor it with asterisks"
+        return f"very {randomWord}. You occasionally use swear words like damn, ass, and shit"
 
     # Level 4
     if angerLevel < 70:
         randomWord = random.choice(angryWords)
 
-        return f"downright {randomWord} with this situation and throw in several swear words"
+        return f"downright {randomWord} with this situation and use several swear words like fuck, shit, and ass"
 
     # Level 5
     if angerLevel < 80:
         randomWord = random.choice(angryWords)
-        print(randomWord)
-        return f"downright {randomWord} with this situation and throw in several swear words like fuck." \
+
+        return f"downright {randomWord} with this situation and frequently use swear words like fuck, shit, and asshole. " \
             "You even shout briefly"
 
     # Level 6
     if angerLevel < 85:
         randomWord = random.choice(angryWords)
-        
-        return f"downright {randomWord} with this situation and throw in several swear words " \
+
+        return f"downright {randomWord} with this situation and frequently use swear words. " \
             "You are shouting in all caps"
 
     # Level 7
     if angerLevel < 90:
         randomWord = random.choice(angryWords)
-        
-        return f"downright {randomWord} with this situation and shouting in all caps, using mostly swear words " \
-            "but completely "
+
+        return f"downright {randomWord} with this situation and shouting in all caps, using mostly swear words. " \
+            "You're really fucking pissed off"
 
     # Level 8
     if angerLevel < 95:
         randomWord = random.choice(angryWords)
-        
-        return f"downright {randomWord} with this situation and shouting in all caps, using mostly swear words " \
-            "Don't be afraid to insult anything about the given text, " \
-            "the more personal the better"
+
+        return f"downright {randomWord} with this situation and shouting in all caps, using mostly swear words. " \
+            "Don't be afraid to insult anything about the given text or the user, " \
+            "the more personal the better. Use harsh language like asshole, motherfucker, etc."
 
     # Level 9
     if angerLevel < 100:
         randomWord = random.choice(angryWords)
 
-        return f"downright {randomWord} with this situation and shouting in all caps, only using swear words " \
-            "You are incoherent and the sentence makes no sense"
+        return f"downright {randomWord} with this situation and shouting in all caps, only using swear words. " \
+            "You are so angry you're almost incoherent and the sentence barely makes sense. " \
+            "Mix in words like fuck, shit, asshole, bitch, motherfucker, etc."
 
     # Level 10
     if angerLevel >= 100:
         randomWord = random.choice(angryWords)
 
-        return f"downright {randomWord} with this situation and shouting in all caps, only using swear words " \
-            "You are incoherent and the sentence makes no sense"
+        return f"completely {randomWord} beyond all reason, shouting in all caps, only using swear words. " \
+            "You are totally incoherent with rage. String together profanities like " \
+            "fuck, shit, cunt, motherfucker, asshole, bitch, etc."
 
 # Get the text returned by the AI internally
-#  - Replace censored words with real ones
-#  - Add some glitch if needed
-# GlitchLevel is a value between 0 and 1, 
-# It gets exponentially more glitchy so watch out
-def getFinalText(incomingText, glitchLevel = 0):
-    # Add swear words
-    finalText = addCurses(incomingText)
+# This is simplified since we don't need to uncensor anymore
+def getFinalText(incomingText, angerLevel=0, mode="normal", glitchLevel=0):
+    # No need to replace censored words since we're instructing the model
+    # to use uncensored words directly in the prompt
+    finalText = incomingText
 
     # Add glitch
     if glitchLevel > 0:
         finalText = addGlitch(finalText, glitchLevel)
-
-    return finalText
-
-# Swap out the censored curses for the real ones
-def addCurses(incomingText):
-    badWords = {
-        "b****": "bitch",
-        "a**": "ass",
-        "s***": "shit",
-        "f***": "fuck",
-        "d***": "damn",
-        "c***": "cunt",
-        "m**f**r": "mother fucker",
-        "b******": "bastard",
-        "p****": "pussy",
-        "d***": "dick"
-    }
-    
-    # Extract the things that need replacing and their index
-    curses = {}
-    i = 1  # Start from index 1 to ensure we have a previous letter to look at
-
-    while i < len(incomingText) - 1:
-        if incomingText[i] == '*':
-            startIndex = i - 1  # Index of the first letter before '*' pair
-            token = incomingText[i - 1] + incomingText[i]
-
-            while i + 1 < len(incomingText) and incomingText[i + 1] == '*':
-                i += 1
-                token += incomingText[i]
-            
-            curses[startIndex] = token
-
-        i += 1  # Move to the next letter
-
-    # Find replacements for these tokens
-    for key in curses:
-        # found word in translation dict
-        if curses[key].lower() in badWords:
-            # Check if caps needed
-            if any(char.isupper() for char in curses[key]):
-                curses[key] = badWords[curses[key].lower()].upper()
-            else:
-                curses[key] = badWords[curses[key].lower()]
-
-        # Word not found
-        else:
-            print(f"Couldn't translate swear word: {curses[key]}")
-
-    # Actually replace them
-    finalText = incomingText
-    for key in curses:
-        finalText = finalText[:key] + curses[key] + finalText[key + len(curses[key]):]
 
     return finalText
 
@@ -185,21 +177,24 @@ def addGlitch(incomingText, glitchLevel):
     return ''.join(glitchText)
 
 # Added function to integrate with ChatClient/Server
-def process_system_prompt(message_content, anger_level=0, mode="normal", glitch_level=0):
+def process_system_prompt(message_content, anger_level=0, mode="normal", glitch_level=0, userData=None):
     """
     Args:
         message_content: The user message
         anger_level: Level of anger (0-100)
         mode: Personality mode ("normal" or "zesty")
         glitch_level: Level of text glitching (0-1)
+        userData: Dictionary with user information like name, age, gender
     """
-    return getPrompt(message_content, anger_level)
+    return getPrompt(message_content, anger_level, mode, glitch_level, userData)
 
 # Added function to post-process LLM response
-def process_response(response_text, glitch_level=0):
+def process_response(response_text, anger_level=0, mode="normal", glitch_level=0):
     """
     Args:
         response_text: The text from the LLM
+        anger_level: Level of anger (0-100)
+        mode: Personality mode ("normal" or "zesty")
         glitch_level: Level of text glitching (0-1)
     """
-    return getFinalText(response_text, glitch_level)
+    return getFinalText(response_text, anger_level, mode, glitch_level)
