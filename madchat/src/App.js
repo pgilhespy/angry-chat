@@ -1,6 +1,10 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import React, { useState, useEffect, useRef } from 'react';
-import { FaQuestionCircle, FaEllipsisV, FaEdit, FaTrash, FaUser, FaSignOutAlt, FaChartBar, FaTimes } from 'react-icons/fa';
+import {
+  FaQuestionCircle, FaEllipsisV, FaEdit, FaTrash, FaUser, FaSignOutAlt, FaChartBar, FaTimes, FaEye,
+  FaEyeSlash
+} from 'react-icons/fa';
+
 
 const App = () => {
   // Navigation for redirect
@@ -17,6 +21,12 @@ const App = () => {
   // New state for typing detection
   const [isUserTyping, setIsUserTyping] = useState(false);
   const typingTimeoutRef = useRef(null);
+
+  // Censorship state
+  const [censorSwearWords, setCensorSwearWords] = useState(() => {
+    // Get saved preference from localStorage or default to true (censored)
+    return localStorage.getItem('censorSwearWords') !== 'false';
+  });
 
   // User data state from localStorage
   const [userData, setUserData] = useState(() => {
@@ -57,6 +67,11 @@ const App = () => {
   // Calculate remaining messages
   const remainingMessages = 15 - messageCount;
 
+  // Save censorship preference to localStorage
+  useEffect(() => {
+    localStorage.setItem('censorSwearWords', censorSwearWords);
+  }, [censorSwearWords]);
+
   // Check for userData and redirect if empty
   useEffect(() => {
     if (!userData) {
@@ -87,6 +102,84 @@ const App = () => {
       }
     };
   }, []);
+
+  // Function to censor swear words in text
+  const censorText = (text) => {
+    if (!censorSwearWords) return text;
+
+    // List of base swear words to check against
+    const swearWords = [
+      'fuck', 'shit', 'ass', 'bitch', 'damn', 'cunt',
+      'asshole', 'motherfucker', 'dick', 'pussy', 'bullshit'
+    ];
+
+    // Function to normalize text by removing consecutive duplicate letters
+    const normalizeWord = (word) => {
+      if (!word || word.length <= 1) return word;
+      let result = word[0];
+      for (let i = 1; i < word.length; i++) {
+        if (word[i] !== word[i - 1]) {
+          result += word[i];
+        }
+      }
+      return result;
+    };
+
+    // Split text into words for processing
+    let words = text.split(/\b/);
+    let censoredText = '';
+
+    for (let i = 0; i < words.length; i++) {
+      const word = words[i];
+      // Skip empty words and very short words
+      if (!word || word.length < 2) {
+        censoredText += word;
+        continue;
+      }
+
+      // Normalize the word (remove consecutive duplicate letters)
+      const normalizedWord = normalizeWord(word.toLowerCase());
+
+      // Check if the normalized word matches any swear word
+      if (swearWords.some(swear =>
+        normalizedWord === swear ||
+        normalizedWord === swear + 's' ||
+        normalizedWord === swear + 'ing' ||
+        normalizedWord.includes(swear)
+      )) {
+        // It's a match - censor it
+        censoredText += word[0] + '*'.repeat(word.length - 1);
+      } else {
+        // Also check for words with spaces in between letters (like "f u c k")
+        const wordWithoutSpaces = word.replace(/\s+/g, '').toLowerCase();
+        if (swearWords.some(swear => wordWithoutSpaces === swear)) {
+          censoredText += word[0] + '*'.repeat(word.length - 1);
+        } else {
+          // No match, keep the original word
+          censoredText += word;
+        }
+      }
+    }
+
+    // Additional layer to handle special cases
+    // Handle words with deliberate separators like "F-U-C-K" or "F.U.C.K"
+    const separatorPattern = /\b([a-z])[\s\-\._]+([a-z])[\s\-\._]+([a-z])[\s\-\._]+([a-z])\b/gi;
+    censoredText = censoredText.replace(separatorPattern, match => {
+      // Remove all separators and check if it's a 4-letter swear word
+      const letters = match.replace(/[\s\-\._]+/g, '').toLowerCase();
+      if (swearWords.includes(letters)) {
+        return match[0] + '*'.repeat(match.length - 1);
+      }
+      return match;
+    });
+
+    return censoredText;
+  };
+
+  // Function to toggle censorship
+  const toggleCensorship = () => {
+    setCensorSwearWords(prev => !prev);
+  };
 
   // Generate a unique title for a new conversation
   const generateUniqueTitle = (firstMessage) => {
@@ -227,16 +320,19 @@ const App = () => {
 
   // Completely reset chat state when bot leaves
   const createNewChatFromMadness = () => {
-    if (currentTitle && messageCount > 0 && !window.confirm("The bot descended into madness. Start a new chat!")) {
-      return;
-    }
-
+    // Always clear state completely before creating a new chat
     setValue('');
     setCurrentTitle(null);
     setConversationId(null);
     setMessageCount(0);
     setAngerLevel(0);
     setGlitchLevel(0);
+
+    // Wait a short moment to ensure state is updated before allowing new input
+    setTimeout(() => {
+      // Optional: Show a notification that a new chat has been created
+      console.log("New chat created after bot meltdown");
+    }, 100);
   };
 
   // Handle clicking on an existing conversation
@@ -510,6 +606,8 @@ const App = () => {
         angerLevel={angerLevel}
         glitchLevel={glitchLevel}
         messageCount={messageCount}
+        censorSwearWords={censorSwearWords}
+        toggleCensorship={toggleCensorship}
       />
 
       <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}> {/* Adjust height to account for navbar */}
@@ -623,7 +721,9 @@ const App = () => {
                     wordWrap: 'break-word'
                   }}
                 >
-                  <p style={{ margin: 0, lineHeight: '1.5' }}>{chatMessage.content}</p>
+                  <p style={{ margin: 0, lineHeight: '1.5' }}>
+                    {chatMessage.role === 'assistant' ? censorText(chatMessage.content) : chatMessage.content}
+                  </p>
                 </div>
               </li>
             ))}
@@ -819,7 +919,15 @@ const App = () => {
 export default App;
 
 
-const Navbar = ({ userData, handleLogout, angerLevel, glitchLevel, messageCount }) => {
+const Navbar = ({
+  userData,
+  handleLogout,
+  angerLevel,
+  glitchLevel,
+  messageCount,
+  censorSwearWords,
+  toggleCensorship
+}) => {
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showStatsPanel, setShowStatsPanel] = useState(false);
 
@@ -862,6 +970,28 @@ const Navbar = ({ userData, handleLogout, angerLevel, glitchLevel, messageCount 
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+        {/* Censorship Toggle Button */}
+        <div style={{ position: 'relative' }}>
+          <button
+            id="censor-toggle"
+            onClick={toggleCensorship}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '8px',
+              borderRadius: '50%',
+              backgroundColor: 'transparent'
+            }}
+            title={censorSwearWords ? "Show uncensored text" : "Censor swear words"}
+          >
+            {censorSwearWords ? <FaEyeSlash size={20} /> : <FaEye size={20} />}
+          </button>
+        </div>
+
         {/* Stats Icon */}
         <div style={{ position: 'relative' }}>
           <button
