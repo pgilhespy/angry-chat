@@ -125,4 +125,10 @@ input:focus{
   background-position: center;
   background-repeat: no-repeat;
   background-size: 60%;
+
+  transition: background-size 0.1s ease;
+}
+
+.arrowUp:hover {
+  background-size: 70%;
 }
