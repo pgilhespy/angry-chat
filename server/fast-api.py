@@ -10,7 +10,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from uuid import uuid4
 import promptUtils
-#import dotenv
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -94,18 +93,20 @@ class ClaudeAPI:
             return f"Error: {error_msg}"
 
 class ChatRequest(BaseModel):
-    message_content: str
+    message_content: Optional[str] = None
     conversation_id: Optional[str] = None
     system_prompt: Optional[str] = None
     # Personality tuning parameters
-    anger_level: Optional[int] = 0  # Level of anger (0-100)
-    personality_mode: Optional[str] = "normal"  # Personality mode ("normal" or "zesty")
-    glitch_level: Optional[float] = 0  # Text glitch level (0-1)
-    use_prompt_utils: Optional[bool] = False  # Whether to use promptUtils
+    anger_level: Optional[int] = 0
+    personality_mode: Optional[str] = "normal"
+    glitch_level: Optional[float] = 0
+    use_prompt_utils: Optional[bool] = True  # Always True by default
     # Performance tuning parameters
-    temperature: Optional[float] = 0.3  # Higher = more random/creative, Lower = more deterministic/focused
-    top_p: Optional[float] = 0.9  # Not used by Claude but kept for compatibility
-    max_new_tokens: Optional[int] = 400  # Approximated to max_tokens for Claude
+    temperature: Optional[float] = 0.7
+    top_p: Optional[float] = 0.9
+    max_new_tokens: Optional[int] = 150
+    # User data for personalization
+    userData: Optional[Dict[str, Any]] = None
 
 class ChatResponse(BaseModel):
     response: str
@@ -116,6 +117,8 @@ class ConversationManager:
     def __init__(self):
         # Using dictionary for O(1) lookup time
         self.conversations = {}
+        # Track when conversations were last used for potential cleanup
+        self.last_activity = {}
         
     def process_message(self, message_content: str, conversation_id: str = None) -> Dict[str, Any]:
         if not conversation_id:
@@ -127,6 +130,9 @@ class ConversationManager:
             
         # Add user message directly to history (no system prompt in history)
         self.conversations[conversation_id].append({"role": "user", "content": message_content})
+        
+        # Update last activity timestamp
+        self.last_activity[conversation_id] = time.time()
         
         return {
             "conversation_id": conversation_id
@@ -140,6 +146,32 @@ class ConversationManager:
         # Only append if the conversation exists (avoid checks for better performance)
         if conversation_id in self.conversations:
             self.conversations[conversation_id].append({"role": "assistant", "content": content})
+            # Update last activity timestamp
+            self.last_activity[conversation_id] = time.time()
+    
+    def get_all_conversations(self) -> Dict[str, List[Dict[str, str]]]:
+        """Return all stored conversations"""
+        return self.conversations
+    
+    def clean_old_conversations(self, max_age_hours=24):
+        """Clean up conversations older than max_age_hours"""
+        current_time = time.time()
+        max_age_seconds = max_age_hours * 3600
+        
+        # Find conversations to remove
+        to_remove = []
+        for conv_id, last_time in self.last_activity.items():
+            if current_time - last_time > max_age_seconds:
+                to_remove.append(conv_id)
+                
+        # Remove old conversations
+        for conv_id in to_remove:
+            if conv_id in self.conversations:
+                del self.conversations[conv_id]
+            if conv_id in self.last_activity:
+                del self.last_activity[conv_id]
+                
+        return len(to_remove)  # Return number of removed conversations
 
 # Initialize FastAPI app and components
 app = FastAPI(title="Chat API")
@@ -164,22 +196,26 @@ async def chat_view(request: ChatRequest):
         # Extract request parameters
         message_content = request.message_content
         conversation_id = request.conversation_id
+        user_data = request.userData
+                    
+        # Handle case where only userData is provided (no message)
+        if user_data and not message_content:
+            return JSONResponse({
+                "response": "User data received successfully",
+                "user_message": "",
+                "conversation_id": conversation_id or str(uuid4())
+            })
         
-        # Use prompt utils if requested
-        if request.use_prompt_utils:
-            system_prompt = promptUtils.process_system_prompt(
-                message_content,
-                anger_level=request.anger_level,
-                mode=request.personality_mode
-            )
-        # Use provided system prompt
-        elif request.system_prompt:
-            system_prompt = request.system_prompt
-        # Fall back to default
-        else:
-            system_prompt = "You are a helpful assistant."
+        # Generate system prompt using promptUtils (always)
+        system_prompt = promptUtils.process_system_prompt(
+            message_content,
+            anger_level=request.anger_level,
+            mode=request.personality_mode,
+            glitch_level=request.glitch_level,
+            userData=request.userData
+        )
         
-        # Process the message (no system prompt stored in history)
+        # Process the message
         result = conversation_manager.process_message(message_content, conversation_id)
         conversation_id = result.get('conversation_id')
         
@@ -190,24 +226,25 @@ async def chat_view(request: ChatRequest):
         messages = [{"role": "system", "content": system_prompt}] + conversation_history
         
         # Set generation parameters from request or use defaults
-        temperature = request.temperature or 0.3
-        top_p = request.top_p or 0.9  # Not used by Claude but kept for compatibility
-        max_new_tokens = request.max_new_tokens or 400
+        temperature = request.temperature or 0.7
+        top_p = request.top_p or 0.9
+        max_new_tokens = request.max_new_tokens or 150
         
         # Get response from Claude API
         response_from_llm = claude_api.generate_response(
             messages,
             temperature=temperature,
-            top_p=top_p,  # This will be ignored by the Claude API
+            top_p=top_p,
             max_new_tokens=max_new_tokens
         )
         
-        # Apply text effects if using promptUtils
-        if request.use_prompt_utils:
-            response_from_llm = promptUtils.process_response(
-                response_from_llm,
-                glitch_level=request.glitch_level,
-            )
+        # Always apply text effects with promptUtils
+        response_from_llm = promptUtils.process_response(
+            response_from_llm,
+            anger_level=request.anger_level,
+            mode=request.personality_mode,
+            glitch_level=request.glitch_level
+        )
         
         # Store the assistant's response in the conversation history
         conversation_manager.add_assistant_message(conversation_id, response_from_llm)
@@ -227,6 +264,26 @@ async def chat_view(request: ChatRequest):
             "user_message": request.message_content if hasattr(request, 'message_content') else "",
             "conversation_id": conversation_id if 'conversation_id' in locals() else None
         }, status_code=500)
+
+# New endpoint to get all conversations
+@app.get("/conversations")
+async def get_conversations():
+    """Get all stored conversations"""
+    conversations = conversation_manager.get_all_conversations()
+    return JSONResponse({
+        "conversations": conversations,
+        "count": len(conversations)
+    })
+
+# Cleanup endpoint for maintenance
+@app.post("/cleanup")
+async def cleanup_conversations(max_age_hours: int = 24):
+    """Clean up conversations older than specified hours"""
+    removed = conversation_manager.clean_old_conversations(max_age_hours)
+    return JSONResponse({
+        "removed": removed,
+        "remaining": len(conversation_manager.conversations)
+    })
 
 def run_server(host='127.0.0.1', port=8000):
     print(f"Starting Chat API server on {host}:{port}")
